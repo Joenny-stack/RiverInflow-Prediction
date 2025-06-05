@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPI Forecasting Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>SPI Forecasting Dashboard</h1>
+    
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" id="csv-file" accept=".csv">
+        <button type="submit">Upload and Predict</button>
+    </form>
+    
+    <h2>Forecasted SPI Trends</h2>
+    <canvas id="spiChart"></canvas>
+
+    <script>
+        document.getElementById("upload-form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            let file = document.getElementById("csv-file").files[0];
+            let formData = new FormData();
+            formData.append("csv_file", file);
+            
+            let response = await fetch("/predict", { method: "POST", body: formData });
+            let data = await response.json();
+
+            let ctx = document.getElementById('spiChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        label: "Predicted SPI",
+                        data: Object.values(data),
+                        borderColor: "blue",
+                        fill: false
+                    }]
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+<!-- This is the main HTML file for the SPI Forecasting Dashboard -->
