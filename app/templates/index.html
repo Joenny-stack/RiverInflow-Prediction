@@ -7,40 +7,68 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>SPI Forecasting Dashboard</h1>
-    
-    <form id="upload-form" enctype="multipart/form-data">
-        <input type="file" id="csv-file" accept=".csv">
-        <button type="submit">Upload and Predict</button>
-    </form>
-    
-    <h2>Forecasted SPI Trends</h2>
-    <canvas id="spiChart"></canvas>
-
+    <nav style="background:#1a237e;color:white;padding:1em 2em;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:bold;font-size:1.2em;">SPI Forecasting Dashboard</span>
+        <a href="/predict" style="color:white;text-decoration:none;font-weight:bold;">Predictions</a>
+    </nav>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2em;padding:2em;">
+        <div>
+            <h3>Gauge 1 - Livingstone</h3>
+            <canvas id="chart1"></canvas>
+        </div>
+        <div>
+            <h3>Gauge 2 - Kalomo</h3>
+            <canvas id="chart2"></canvas>
+        </div>
+        <div>
+            <h3>Gauge 3 - Gwayi River</h3>
+            <canvas id="chart3"></canvas>
+        </div>
+        <div>
+            <h3>Ume River</h3>
+            <canvas id="chart4"></canvas>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.getElementById("upload-form").addEventListener("submit", async function(event) {
-            event.preventDefault();
-            let file = document.getElementById("csv-file").files[0];
-            let formData = new FormData();
-            formData.append("csv_file", file);
-            
-            let response = await fetch("/predict", { method: "POST", body: formData });
-            let data = await response.json();
-
-            let ctx = document.getElementById('spiChart').getContext('2d');
+        // Helper to load and plot CSV data
+        async function plotCSVChart(csvPath, chartId, actualLabel, predLabel) {
+            const response = await fetch(csvPath);
+            const text = await response.text();
+            const rows = text.trim().split('\n').slice(1); // skip header
+            const actual = [], predicted = [];
+            rows.forEach(row => {
+                const [a, p] = row.split(',').map(Number);
+                actual.push(a);
+                predicted.push(p);
+            });
+            const labels = Array.from({length: actual.length}, (_, i) => i + 1);
+            const ctx = document.getElementById(chartId).getContext('2d');
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: Object.keys(data),
-                    datasets: [{
-                        label: "Predicted SPI",
-                        data: Object.values(data),
-                        borderColor: "blue",
-                        fill: false
-                    }]
+                    labels: labels,
+                    datasets: [
+                        { label: actualLabel, data: actual, borderColor: '#1976d2', fill: false, borderDash: [5,5], pointRadius: 2 },
+                        { label: predLabel, data: predicted, borderColor: '#d32f2f', fill: false, pointRadius: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        x: { title: { display: true, text: 'Time Step' } },
+                        y: { title: { display: true, text: 'SPI Value' } }
+                    },
+                    animation: false
                 }
             });
-        });
+        }
+        // Plot all 4 charts
+        plotCSVChart('/predictions_Gauge 1 _ Livingstone.csv', 'chart1', 'Actual SPI', 'Predicted SPI');
+        plotCSVChart('/predictions_Gauge 2_ Kalomo.csv', 'chart2', 'Actual SPI', 'Predicted SPI');
+        plotCSVChart('/predictions_Gauge 3_Gwayi River.csv', 'chart3', 'Actual SPI', 'Predicted SPI');
+        plotCSVChart('/predictions_UmeRiver.csv', 'chart4', 'Actual SPI', 'Predicted SPI');
     </script>
 </body>
 </html>

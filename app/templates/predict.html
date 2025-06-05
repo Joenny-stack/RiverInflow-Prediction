@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPI Forecasting - Predictions</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav style="background:#1a237e;color:white;padding:1em 2em;display:flex;justify-content:space-between;align-items:center;">
+        <a href="/" style="color:white;text-decoration:none;font-weight:bold;">Dashboard</a>
+        <span style="font-weight:bold;font-size:1.2em;">Predictions Upload</span>
+    </nav>
+    <div style="max-width:500px;margin:2em auto;padding:2em;border:1px solid #eee;border-radius:8px;box-shadow:0 2px 8px #eee;">
+        <h2>Upload CSV for SPI Prediction</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+            <input type="file" id="csv-file" accept=".csv">
+            <button type="submit">Upload and Predict</button>
+        </form>
+        <div id="result"></div>
+        <canvas id="predictChart" style="margin-top:2em;"></canvas>
+    </div>
+    <script>
+        let chartInstance = null;
+        document.getElementById("upload-form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            let file = document.getElementById("csv-file").files[0];
+            let formData = new FormData();
+            formData.append("csv_file", file);
+            let response = await fetch("/predict", { method: "POST", body: formData });
+            let data = await response.json();
+            let resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+            let datasets = [];
+            let maxLen = 0;
+            Object.values(data).forEach(stationData => {
+                let totalLen = (stationData.history?.length || 0) + (stationData.forecast?.length || 0);
+                if (totalLen > maxLen) maxLen = totalLen;
+            });
+            let labels = Array.from({length: maxLen}, (_, i) => i + 1);
+            Object.entries(data).forEach(([station, values], idx) => {
+                datasets.push({
+                    label: station + " (history)",
+                    data: values.history,
+                    borderColor: `hsl(${idx * 60}, 70%, 50%)`,
+                    fill: false,
+                    borderDash: [5, 5],
+                    pointRadius: 3
+                });
+                datasets.push({
+                    label: station + " (forecast)",
+                    data: Array(values.history.length).fill(null).concat(values.forecast),
+                    borderColor: `hsl(${idx * 60}, 70%, 50%)`,
+                    fill: false,
+                    borderDash: [],
+                    pointRadius: 3
+                });
+            });
+            let ctx = document.getElementById('predictChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true }, title: { display: true, text: 'SPI History and Forecast' } },
+                    scales: { x: { title: { display: true, text: 'Time Step' } }, y: { title: { display: true, text: 'SPI Value' } } },
+                    animation: false
+                }
+            });
+        });
+    </script>
+</body>
+</html>
